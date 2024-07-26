@@ -1,359 +1,307 @@
-//-------------------------------------------------------
-// mips.v
-// Max Yi (byyi@hmc.edu) and David_Harris@hmc.edu 12/9/03
-// Model of subset of MIPS processor described in Ch 1
-//-------------------------------------------------------
+`timescale 1ns/10ps
 
-/* simplified MIPS processor */
-module mips #(parameter WIDTH = 8, REGBITS = 3) (
-    input clk, reset,
-    input [WIDTH-1:0] memdata,
-    output memread, memwrite,
-    output [WIDTH-1:0] adr, writedata
+`define RAW_OP_CAL  6'b000000
+`define RAW_OP_ADDI 6'b001000
+`define RAW_OP_BEQ  6'b000100
+`define RAW_OP_J    6'b000010
+`define RAW_OP_LB   6'b100000
+`define RAW_OP_SB   6'b101000
+
+// Shortened ops
+`define OP_NOP   3'b000
+`define OP_CAL   3'b001
+`define OP_ADDI  3'b010
+`define OP_BEQ   3'b011
+`define OP_J     3'b100
+`define OP_LB    3'b101
+`define OP_SB    3'b110
+
+`define FUNCT_ADD 6'b100000
+`define FUNCT_SUB 6'b100010
+`define FUNCT_AND 6'b100100
+`define FUNCT_OR  6'b100101
+`define FUNCT_SLT 6'b101010
+
+`define ALU_OP_NOP 3'b000
+`define ALU_OP_ADD 3'b001
+`define ALU_OP_SUB 3'b010
+`define ALU_OP_AND 3'b011
+`define ALU_OP_OR  3'b100
+`define ALU_OP_SLT 3'b101
+
+module alu(
+    input [7:0] a, b,
+    input [2:0] alu_op,
+    output reg [7:0] result
 );
-  wire [31:0] instr;
-  wire zero, alusrca, memtoreg, iord, pcen, regwrite, regdst;
-  wire [1:0] aluop, pcsource, alusrcb;
-  wire [3:0] irwrite;
-  wire [2:0] alucont;
-  controller cont(clk, reset, instr[31:26], zero, memread, memwrite,
-    alusrca, memtoreg, iord, pcen, regwrite, regdst,
-    pcsource, alusrcb, aluop, irwrite);
-  alucontrol ac(aluop, instr[5:0], alucont);
-  datapath #(WIDTH, REGBITS) dp(clk, reset, memdata, alusrca, memtoreg,
-    iord, pcen, regwrite, regdst, pcsource, alusrcb,
-    irwrite, alucont, zero, instr, adr, writedata);
+  always @(*)
+    case (alu_op) // synthesis parallel_case,full_case
+    `ALU_OP_ADD: result <= a + b;
+    `ALU_OP_SUB: result <= a - b;
+    `ALU_OP_AND: result <= a & b;
+    `ALU_OP_OR:  result <= a | b;
+    `ALU_OP_SLT: result <= a < b;
+    `ALU_OP_NOP:;
+    endcase
 endmodule
 
-/* controller */
-module controller (
-    input clk, reset,
-    input [5:0] op,
-    input zero,
-    output reg memread, memwrite, alusrca, memtoreg, iord,
-    output pcen,
-    output reg regwrite, regdst,
-    output reg [1:0] pcsource, alusrcb, aluop,
-    output reg [3:0] irwrite
+module regs(
+    input [2:0] r_id_1, r_id_2, w_id,
+    input w_en,
+    input [7:0] w,
+    output [7:0] r_1, r_2,
+    input clk, rst
 );
-  parameter FETCH1  = 4'b0001;
-  parameter FETCH2  = 4'b0010;
-  parameter FETCH3  = 4'b0011;
-  parameter FETCH4  = 4'b0100;
-  parameter DECODE  = 4'b0101;
-  parameter MEMADR  = 4'b0110;
-  parameter LBRD    = 4'b0111;
-  parameter LBWR    = 4'b1000;
-  parameter SBWR    = 4'b1001;
-  parameter RTYPEEX = 4'b1010;
-  parameter RTYPEWR = 4'b1011;
-  parameter BEQEX   = 4'b1100;
-  parameter JEX     = 4'b1101;
-  parameter ADDIEX  = 4'b1110;
-  parameter ADDIWR  = 4'b1111;
-
-  parameter LB      = 6'b100000;
-  parameter SB      = 6'b101000;
-  parameter RTYPE   = 6'b0;
-  parameter BEQ     = 6'b000100;
-  parameter J       = 6'b000010;
-  parameter ADDI    = 6'b001000;
-  reg [3:0] state, nextstate;
-  reg pcwrite, pcwritecond;
-  // state register
+  reg [7:0] regfile[7:0];
   always @(posedge clk)
-    if (reset) state <= FETCH1;
-    else state <= nextstate;
-    // next state logic
-  always @(*) begin
-    case (state)
-    FETCH1: nextstate <= FETCH2;
-    FETCH2: nextstate <= FETCH3;
-    FETCH3: nextstate <= FETCH4;
-    FETCH4: nextstate <= DECODE;
-    DECODE:
-      case (op) // decode / register fetch / branch address calculation
-      LB:      nextstate <= MEMADR;
-      SB:      nextstate <= MEMADR;
-      RTYPE:   nextstate <= RTYPEEX;
-      BEQ:     nextstate <= BEQEX;
-      J:       nextstate <= JEX;
-      ADDI:    nextstate <= ADDIEX;
-      default: nextstate <= FETCH1; // should never happen
-      endcase
+    if (w_en) regfile[w_id] <= w;
+  assign r_1 = r_id_1 ? regfile[r_id_1] : 0;
+  assign r_2 = r_id_2 ? regfile[r_id_2] : 0;
+endmodule
 
-    MEMADR:
-      case (op) // address computation
-      LB:      nextstate <= LBRD;
-      SB:      nextstate <= SBWR;
-      default: nextstate <= FETCH1; // should never happen
-      endcase
-    LBRD:    nextstate <= LBWR; // memory load
-    LBWR:    nextstate <= FETCH1; // write register
-    SBWR:    nextstate <= FETCH1; // memory store
-    RTYPEEX: nextstate <= RTYPEWR; // perform arithmetic
-    RTYPEWR: nextstate <= FETCH1; // write result to register
-    BEQEX:   nextstate <= FETCH1; // compare values and jump
-    JEX:     nextstate <= FETCH1; // jump
-    ADDIEX:  nextstate <= ADDIWR;
-    ADDIWR:  nextstate <= FETCH1;
-    default: nextstate <= FETCH1; // should never happen
-    endcase
+module mips (
+    output [7:0] mem_i_addr,
+    input [31:0] mem_i,
+
+    output [7:0] mem_rw_addr,
+    input [7:0] mem_r,
+    output [7:0] mem_w,
+    output mem_w_en,
+
+    input clk, rst
+);
+  // stall/nop control
+  wire beq_in_ma, j_in_id, lb_in_ex, if_nop, if_stall, id_nop, ex_nop;
+  reg id_if_nop;
+  reg [7:0] pc;
+  // ID stage
+  wire [2:0] op;
+  wire [4:0] rd, rt, rs;
+  wire [5:0] funct;
+  wire [7:0] imm;
+  reg [7:0] id_pc;
+  wire [2:0] alu_op;
+  wire [2:0] w_id;
+  // register IO
+  wire [2:0] regs_w_id;
+  wire regs_w_en;
+  wire [7:0] regs_r_1, regs_r_2, regs_w;
+  wire [2:0] regs_r_id_1;
+  wire [2:0] regs_r_id_2;
+  // EX stage
+  reg [7:0] ex_regs_r_1, ex_regs_r_2, ex_pc, ex_imm;
+  reg [2:0] ex_r_id_1, ex_r_id_2, ex_w_id;
+  reg [2:0] ex_alu_op, ex_op;
+  wire [7:0] ex_regs_r_1_fw, ex_regs_r_2_fw;
+  wire [7:0] alu_in_1, alu_in_2, alu_out;
+  // MA stage
+  reg [7:0] ma_alu_out, ma_pc, ma_imm, ma_regs_r_2;
+  reg [2:0] ma_op;
+  reg [2:0] ma_w_id;
+  // WB stage
+  reg [7:0] wb_alu_out;
+  reg [2:0] wb_op;
+  reg [2:0] wb_w_id;
+  // EP stage
+  reg [2:0] ep_w_id;
+  reg [7:0] ep_w;
+
+  // BEQ that updates PC in MA
+  assign beq_in_ma = (ma_op == `OP_BEQ && ma_alu_out == 0);
+  // J in ID
+  assign j_in_id = (op == `OP_J);
+  // LB whose dest in EX is src in ID
+  assign lb_in_ex = (ex_op == `OP_LB && ex_w_id && (ex_w_id == regs_r_id_1 || ex_w_id == regs_r_id_2));
+
+  // BEQ taken in MA stage: pc->updated, IF->nop, ID->nop, EX->nop
+  // J in ID stage:         pc->updated, IF->nop
+  // LB in EX stage:        pc->stall, IF->stall, ID->nop
+  assign if_nop = beq_in_ma || j_in_id;
+  assign if_stall = lb_in_ex;
+  assign id_nop = beq_in_ma || lb_in_ex;
+  assign ex_nop = beq_in_ma;
+
+  always @(posedge clk) begin
+    if (rst)
+      pc <= 0;
+    else if (beq_in_ma)
+      pc <= ma_pc + {ma_imm, 2'b00} + 4;
+    else if (j_in_id)
+      pc <= {imm, 2'b00};
+    else if (lb_in_ex)
+      /* stall */;
+    else
+      pc <= pc + 4;
   end
-  always @(*) begin
-    // set all outputs to zero,
-    // then conditionally assert just the appropriate ones
-    irwrite <= 4'b0000;
-    pcwrite <= 0; pcwritecond <= 0;
-    regwrite <= 0; regdst <= 0;
-    memread <= 0; memwrite <= 0;
-    alusrca <= 0; // pc
-    alusrcb <= 2'b00; // writedata(rd2)
-    aluop <= 2'b00; // add
-    pcsource <= 2'b00; // jump to (aluresult)
-    iord <= 0; memtoreg <= 0;
-    case (state)
-    FETCH1: begin
-      memread <= 1;
-      irwrite <= 4'b1000;
-      alusrcb <= 2'b01; // CONST_ONE (pc+1)
-      pcwrite <= 1;
+
+  // IF stage
+  assign mem_i_addr = (if_stall) ? id_pc : pc;
+
+  always @(posedge clk) begin
+    if (rst) begin
+      id_pc <= 0;
+      id_if_nop <= 1;
+    end else begin
+      if(!if_stall)
+        id_pc <= pc;
+      id_if_nop <= if_nop;
     end
-    FETCH2: begin
-      memread <= 1;
-      irwrite <= 4'b0100;
-      alusrcb <= 2'b01;
-      pcwrite <= 1;
-    end
-    FETCH3: begin
-      memread <= 1;
-      irwrite <= 4'b0010;
-      alusrcb <= 2'b01;
-      pcwrite <= 1;
-    end
-    FETCH4: begin
-      memread <= 1;
-      irwrite <= 4'b0001;
-      alusrcb <= 2'b01;
-      pcwrite <= 1;
-    end
-    DECODE: alusrcb <= 2'b11; // constx4 (pc+imm<<2) for branch calculation
-    MEMADR: begin
-      alusrca <= 1; // a (rd1+imm)
-      alusrcb <= 2'b10; // imm
-    end
-    LBRD: begin
-      memread <= 1; // read memory
-      iord    <= 1; // access memory
-    end
-    LBWR: begin
-      regwrite <= 1;
-      memtoreg <= 1;
-    end
-    SBWR: begin
-      memwrite <= 1; // write memory
-      iord     <= 1; // access memory
-    end
-    RTYPEEX: begin
-      alusrca <= 1; // a (rd1?rd2)
-      aluop   <= 2'b10; // use funct to determine alu operation
-    end
-    RTYPEWR: begin
-      regdst   <= 1;
-      regwrite <= 1;
-    end
-    BEQEX: begin
-      alusrca     <= 1; // a (rd1-rd2)
-      aluop       <= 2'b01; // sub
-      pcwritecond <= 1;
-      pcsource    <= 2'b01; // jmp to (aluresult+clock)
-    end
-    JEX: begin
-      pcwrite  <= 1;
-      pcsource <= 2'b10; // jmp to (imm<<2)
-    end
-    ADDIEX: begin
-      alusrca <= 1; // a
-      alusrcb <= 2'b10; // imm
-      aluop <= 2'b00; // add
-    end
-    ADDIWR: begin
-      regdst <= 0;
-      regwrite <= 1;
-      memtoreg <= 0;
-    end
-    endcase
   end
-  assign pcen = pcwrite | (pcwritecond & zero); // program counter enable
-endmodule
 
-/* alucontrol */
-module alucontrol (
-    input [1:0] aluop,
-    input [5:0] funct,
-    output reg [2:0] alucont
-);
-  always @(*)
-    case (aluop)
-    2'b00: alucont <= 3'b010; // add for lb/sb/addi
-    2'b01: alucont <= 3'b110; // sub (for beq)
-    default:
-      case (funct) // R-Type instructions
-      6'b100000: alucont <= 3'b010; // add (for add)
-      6'b100010: alucont <= 3'b110; // subtract (for sub)
-      6'b100100: alucont <= 3'b000; // logical and (for and)
-      6'b100101: alucont <= 3'b001; // logical or (for or)
-      6'b101010: alucont <= 3'b111; // set on less (for slt)
-      default:   alucont <= 3'b101; // should never happen
-      endcase
+  // ID stage
+  function [2:0] decode_op(input [5:0] op);
+    case(op) // synthesis parallel_case,full_case
+    `RAW_OP_CAL:  decode_op = `OP_CAL;
+    `RAW_OP_ADDI: decode_op = `OP_ADDI;
+    `RAW_OP_BEQ:  decode_op = `OP_BEQ;
+    `RAW_OP_J:    decode_op = `OP_J;
+    `RAW_OP_LB:   decode_op = `OP_LB;
+    `RAW_OP_SB:   decode_op = `OP_SB;
+    default:      decode_op = `OP_NOP;
     endcase
-endmodule
+  endfunction
 
-/* datapath */
-module datapath #(parameter WIDTH = 8, REGBITS = 3) (
-    input clk, reset,
-    input [WIDTH-1:0] memdata,
-    input alusrca, memtoreg, iord, pcen, regwrite, regdst,
-    input [1:0] pcsource, alusrcb,
-    input [3:0] irwrite,
-    input [2:0] alucont,
-    output zero,
-    output [31:0] instr,
-    output [WIDTH-1:0] adr, writedata
-);
-  // the size of the parameters must be changed to match the WIDTH parameter
-  parameter CONST_ZERO = 8'b0;
-  parameter CONST_ONE = 8'b1;
-  wire [REGBITS-1:0] ra1, ra2, wa;
-  wire [WIDTH-1:0] pc, nextpc, md, rd1, rd2, wd, a, src1, src2, aluresult,
-    aluout, constx4;
-  // shift left constant field by 2
-  assign constx4 = {instr[WIDTH-3:0], 2'b00};
-  // register file address fields
-  assign ra1 = instr[REGBITS+20:21];
-  assign ra2 = instr[REGBITS+15:16];
-  mux2 #(REGBITS) regmux(instr[REGBITS+15:16], instr[REGBITS+10:11], regdst, wa);
-  // independent of bit width,
-  // load instruction into four 8-bit registers over four cycles
-  flopen #(8) ir0(clk, irwrite[0], memdata[7:0], instr[7:0]);
-  flopen #(8) ir1(clk, irwrite[1], memdata[7:0], instr[15:8]);
-  flopen #(8) ir2(clk, irwrite[2], memdata[7:0], instr[23:16]);
-  flopen #(8) ir3(clk, irwrite[3], memdata[7:0], instr[31:24]);
-  // datapath
-  flopenr #(WIDTH) pcreg(clk, reset, pcen, nextpc, pc);
-  flop #(WIDTH) mdr(clk, memdata, md);
-  flop #(WIDTH) areg(clk, rd1, a);
-  flop #(WIDTH) wrd(clk, rd2, writedata);
-  flop #(WIDTH) res(clk, aluresult, aluout);
-  mux2 #(WIDTH) adrmux(pc, aluout, iord, adr);
-  mux2 #(WIDTH) src1mux(pc, a, alusrca, src1);
-  mux4 #(WIDTH) src2mux(writedata, CONST_ONE, instr[WIDTH-1:0], constx4,
-    alusrcb, src2);
-  mux4 #(WIDTH) pcmux(aluresult, aluout, constx4, CONST_ZERO, pcsource, nextpc);
-  mux2 #(WIDTH) wdmux(aluout, md, memtoreg, wd);
-  regfile #(WIDTH,REGBITS) rf(clk, regwrite, ra1, ra2, wa, wd, rd1, rd2);
-  alu #(WIDTH) alunit(src1, src2, alucont, aluresult);
-  zerodetect #(WIDTH) zd(aluresult, zero);
-endmodule
-
-/* alu */
-module alu #(parameter WIDTH = 8) (
-    input [WIDTH-1:0] a, b,
-    input [2:0] alucont,
-    output reg [WIDTH-1:0] result
-);
-  wire [WIDTH-1:0] b2, sum, slt;
-  assign b2 = alucont[2] ? ~b : b;
-  assign sum = a + b2 + alucont[2];
-  // slt should be 1 if most significant bit of sum is 1
-  assign slt = sum[WIDTH-1];
-  always @(*)
-    case (alucont[1:0])
-    2'b00: result <= a & b;
-    2'b01: result <= a | b;
-    2'b10: result <= sum;
-    2'b11: result <= slt;
+  function [2:0] decode_funct(input [5:0] funct);
+    case(funct) // synthesis parallel_case,full_case
+    `FUNCT_ADD: decode_funct = `ALU_OP_ADD;
+    `FUNCT_SUB: decode_funct = `ALU_OP_SUB;
+    `FUNCT_AND: decode_funct = `ALU_OP_AND;
+    `FUNCT_OR:  decode_funct = `ALU_OP_OR;
+    `FUNCT_SLT: decode_funct = `ALU_OP_SLT;
+    default:    decode_funct = `ALU_OP_NOP;
     endcase
-endmodule
+  endfunction
 
-/* regfile */
-module regfile #(parameter WIDTH = 8, REGBITS = 3) (
-    input clk,
-    input regwrite,
-    input [REGBITS-1:0] ra1, ra2, wa,
-    input [WIDTH-1:0] wd,
-    output [WIDTH-1:0] rd1, rd2
-);
-  reg [WIDTH-1:0] RAM [(1<<REGBITS)-1:0];
-  // three ported register file
-  // read two ports combinationally
-  // write third port on rising edge of clock
-  // register 0 hardwired to 0
-  always @(posedge clk)
-    if (regwrite) RAM[wa] <= wd;
-  assign rd1 = ra1 ? RAM[ra1] : 0;
-  assign rd2 = ra2 ? RAM[ra2] : 0;
-endmodule
+  assign op = decode_op(mem_i[31:26]);
+  assign rd = mem_i[15:11];
+  assign rt = mem_i[20:16];
+  assign rs = mem_i[25:21];
+  assign funct = mem_i[5:0];
+  assign imm = mem_i[7:0];
 
-/* zerodetect */
-module zerodetect #(parameter WIDTH = 8) (
-    input [WIDTH-1:0] a,
-    output y
-);
-  assign y = (a == 0);
-endmodule
+  assign alu_op = (op == `OP_CAL) ? decode_funct(funct) :
+                  (op == `OP_BEQ) ? `ALU_OP_SUB :
+                  /* else */        `ALU_OP_ADD;
 
-/* flop */
-module flop #(parameter WIDTH = 8) (
-    input clk,
-    input [WIDTH-1:0] d,
-    output reg [WIDTH-1:0] q
-);
-  always @(posedge clk)
-    q <= d;
-endmodule
+  // Register input/output
+  assign regs_r_id_1 = rs;
+  assign regs_r_id_2 = (op == `OP_CAL || op == `OP_BEQ || op == `OP_SB) ? rt : 0;
+  assign w_id = (op == `OP_ADDI || op == `OP_LB) ? rt :
+                (op == `OP_CAL)                  ? rd : 0;
 
-/* flopen */
-module flopen #(parameter WIDTH = 8) (
-    input clk, en,
-    input [WIDTH-1:0] d,
-    output reg [WIDTH-1:0] q
-);
-  always @(posedge clk)
-    if (en) q <= d;
-endmodule
+  regs regs(regs_r_id_1, regs_r_id_2,
+            regs_w_id, regs_w_en, regs_w,
+            regs_r_1, regs_r_2,
+            clk, rst);
 
-/* flopenr */
-module flopenr #(parameter WIDTH = 8) (
-    input clk, reset, en,
-    input [WIDTH-1:0] d,
-    output reg [WIDTH-1:0] q
-);
-  always @(posedge clk)
-    if (reset) q <= 0;
-    else if (en) q <= d;
-endmodule
+  // ID->EX
+  always @(posedge clk) begin
+    if (rst || op == `OP_NOP || id_if_nop || id_nop) begin
+      ex_regs_r_1 <= 0;
+      ex_regs_r_2 <= 0;
+      ex_imm <= 0;
+      ex_alu_op <= 0;
+      ex_op <= `OP_NOP;
+      ex_r_id_1 <= 0;
+      ex_r_id_2 <= 0;
+      ex_w_id <= 0;
+      ex_pc <= 0;
+    end else begin
+      ex_regs_r_1 <= regs_r_1;
+      ex_regs_r_2 <= regs_r_2;
+      ex_imm <= imm;
+      ex_alu_op <= alu_op;
+      ex_op <= op;
+      ex_r_id_1 <= regs_r_id_1;
+      ex_r_id_2 <= regs_r_id_2;
+      ex_w_id <= w_id;
+      ex_pc <= id_pc;
+    end
+  end
 
-/* mux2 */
-module mux2 #(parameter WIDTH = 8) (
-    input [WIDTH-1:0] d0, d1,
-    input s,
-    output [WIDTH-1:0] y
-);
-  assign y = s ? d1 : d0;
-endmodule
+  // EX stage
+  assign ex_regs_r_1_fw = (ma_w_id && (ex_r_id_1 == ma_w_id)) ?
+                            /* forward MA->EX for CAL instructions (not LB as it's delay from MA by stall) */
+                            ma_alu_out :
+                          (wb_w_id && (ex_r_id_1 == wb_w_id)) ?
+                            /* forward WB->EX for CAL/LB instruction */
+                            regs_w :
+                          (ep_w_id && (ex_r_id_1 == ep_w_id)) ?
+                            /* forward EP->EX for CAL/LB instruction */
+                            ep_w :
+                          /* else */
+                            ex_regs_r_1;
+  assign ex_regs_r_2_fw = (ma_w_id && (ex_r_id_2 == ma_w_id)) ?
+                            /* forward MA->EX for CAL instructions (not LB as it's delay from MA by stall) */
+                            ma_alu_out :
+                          (wb_w_id && (ex_r_id_2 == wb_w_id)) ?
+                            /* forward WB->EX for CAL/LB instruction */
+                            regs_w :
+                          (ep_w_id && (ex_r_id_2 == ep_w_id)) ?
+                            /* forward EP->EX for CAL/LB instruction */
+                            ep_w :
+                          /* else */
+                            ex_regs_r_2;
 
-/* mux4 */
-module mux4 #(parameter WIDTH = 8) (
-    input [WIDTH-1:0] d0, d1, d2, d3,
-    input [1:0] s,
-    output reg [WIDTH-1:0]  y
-);
-  always @(*)
-    case (s)
-    2'b00: y <= d0;
-    2'b01: y <= d1;
-    2'b10: y <= d2;
-    2'b11: y <= d3;
-    endcase
+  assign alu_in_1 = ex_regs_r_1_fw;
+  assign alu_in_2 = (ex_op == `OP_ADDI || ex_op == `OP_LB || ex_op == `OP_SB) ?
+                          ex_imm : ex_regs_r_2_fw;
+  alu alu(alu_in_1, alu_in_2, ex_alu_op, alu_out);
+
+  // EX->MA
+  always @(posedge clk) begin
+    if (rst || ex_op == `OP_NOP || ex_nop) begin
+      ma_alu_out <= 0;
+      ma_op <= `OP_NOP;
+      ma_w_id <= 0;
+      ma_pc <= 0;
+      ma_imm <= 0;
+      ma_regs_r_2 <= 0;
+    end else begin
+      ma_alu_out <= alu_out;
+      ma_op <= ex_op;
+      ma_w_id <= ex_w_id;
+      ma_pc <= ex_pc;
+      ma_imm <= ex_imm;
+      ma_regs_r_2 <= ex_regs_r_2_fw; // for SB
+    end
+  end
+
+  // MA (memory access) stage
+  assign mem_w_en = (ma_op == `OP_SB);
+  assign mem_rw_addr = (ma_op == `OP_SB || ma_op == `OP_LB) ? ma_alu_out : 0;
+  assign mem_w = ma_regs_r_2;
+
+  // MA->WB
+  always @(posedge clk) begin
+    if (rst || ma_op == `OP_NOP) begin
+      wb_alu_out <= 0;
+      wb_op <= `OP_NOP;
+      wb_w_id <= 0;
+    end else begin
+      wb_alu_out <= ma_alu_out;
+      wb_op <= ma_op;
+      wb_w_id <= ma_w_id;
+    end
+  end
+
+  // WB (write back) stage
+  assign regs_w = (wb_op == `OP_CAL || wb_op == `OP_ADDI) ?
+                    wb_alu_out :
+                  (wb_op == `OP_LB) ?
+                    mem_r : 0;
+  assign regs_w_en = (wb_w_id != 0);
+  assign regs_w_id = wb_w_id;
+
+  // WB->EP
+  always @(posedge clk) begin
+    // This is required to forward the result from WB to EX stage
+    if (rst || wb_op == `OP_NOP) begin
+      ep_w_id <= 0;
+      ep_w <= 0;
+    end else begin
+      ep_w_id <= wb_w_id;
+      ep_w <= regs_w;
+    end
+  end
 endmodule

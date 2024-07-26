@@ -14,6 +14,12 @@ byte: mips.v byte.v byte.dat
 	iverilog byte.v mips.v
 	vvp a.out
 
+yosys:
+	yosys mips.ys
+
+sim:
+	iverilog -gspecify -T max test.v gate.v lib/osu018_stdcells.v
+
 %.dat: %.asm
 	./asm.pl $<
 

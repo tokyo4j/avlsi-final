@@ -7,20 +7,25 @@
 //-------------------------------------------------------
 `timescale 1ns/10ps
 
+`define MEM_FILE_NAME "fib.dat"
+`include "exmemory.v"
+
 /* top level design for testing */
-module top #(parameter WIDTH = 8, REGBITS = 3) ();
-  reg clk;
-  reg reset;
-  wire memread, memwrite;
-  wire [WIDTH-1:0] adr, writedata;
-  wire [WIDTH-1:0] memdata;
+module top;
+  reg clk, rst;
+  wire w_en;
+  wire [31:0] i;
+  wire [7:0] r, w, i_addr, rw_addr;
   // 10nsec --> 100MHz
   parameter STEP = 10.0;
   // instantiate devices to be tested
-  //mips #(WIDTH, REGBITS) dut(clk, reset, memdata, memread, memwrite, adr, writedata);
-  mips dut(clk, reset, memdata, memread, memwrite, adr, writedata);
+  mips dut(i_addr, i,
+           rw_addr, r, w, w_en,
+           clk, rst);
   // external memory for code and data
-  exmemory #(WIDTH) exmem(clk, memwrite, adr, writedata, memdata);
+  exmemory exmem(i_addr, i,
+                 rw_addr, r, w, w_en,
+                 clk);
   // initialize test
   initial begin
 `ifdef __POST_PR__
@@ -29,8 +34,8 @@ module top #(parameter WIDTH = 8, REGBITS = 3) ();
     // dump waveform
     $dumpfile("dump.vcd");
     $dumpvars(0, top.dut);
-    // reset
-    clk <= 0; reset <= 1; # 22; reset <= 0;
+    // rst
+    clk <= 0; rst <= 1; # 22; rst <= 0;
     // stop at 1,000 cycles
     #(STEP*1000);
     $display("Simulation failed");
@@ -40,47 +45,13 @@ module top #(parameter WIDTH = 8, REGBITS = 3) ();
   always #(STEP / 2)
     clk <= ~clk;
   always @(negedge clk) begin
-    if (memwrite) begin
-      $display("Data [%d] is stored in Address [%d]", writedata, adr);
-      if (adr == 255 & writedata == 13)
+    if (w_en) begin
+      $display("Data [%d] is stored in Address [%d]", w, rw_addr);
+      if (rw_addr == 255 & w == 13)
         $display("Simulation completely successful");
       else
         $display("Simulation failed");
       $finish;
     end
   end
-endmodule
-
-/* external memory accessed by MIPS */
-module exmemory #(parameter WIDTH = 8) (
-    input clk,
-    input memwrite,
-    input [WIDTH-1:0] adr, writedata,
-    output reg [WIDTH-1:0] memdata
-);
-  reg [31:0] RAM [(1<<WIDTH-2)-1:0];
-  wire [31:0] word;
-  integer i;
-  initial begin
-    for (i = 0; i < (1<<WIDTH-2); i = i + 1)
-      RAM[i] = 0;
-    $readmemh("fib.dat", RAM);
-  end
-  // read and write bytes from 32-bit word
-  always @(posedge clk)
-  if (memwrite)
-    case (adr[1:0])
-    2'b00: RAM[adr>>2][31:24] <= writedata;
-    2'b01: RAM[adr>>2][23:16] <= writedata;
-    2'b10: RAM[adr>>2][15:8]  <= writedata;
-    2'b11: RAM[adr>>2][7:0]   <= writedata;
-    endcase
-  assign word = RAM[adr>>2];
-  always @(*)
-    case (adr[1:0])
-    2'b00: memdata <= word[31:24];
-    2'b01: memdata <= word[23:16];
-    2'b10: memdata <= word[15:8];
-    2'b11: memdata <= word[7:0];
-    endcase
 endmodule
