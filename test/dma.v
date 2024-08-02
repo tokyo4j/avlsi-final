@@ -28,16 +28,23 @@ module test;
     $display("Simulation failed");
     $finish;
   end
-  // generate clock to sequence tests
+  reg [7:0] prev_addr;
   always #(STEP / 2)
     clk <= ~clk;
   always @(negedge clk) begin
-    if (top.w_en_by_cpu) begin
-      $display("Data [%d] is stored in Address [%d]", top.w_en_by_cpu, top.addr_by_cpu);
-      if (top.addr_by_cpu == 5 & top.w_by_cpu == 7)
-        $display("Simulation completely successful");
-      else
-      $display("Simulation failed");
+    prev_addr <= top.addr_by_cpu;
+    if (prev_addr == 255 && top.r_by_cpu == 1) begin
+      $display("%d %d %d %d %d %d %d %d",
+               top.sram.RAM[(128/4)+0][31:24], top.sram.RAM[(128/4)+0][23:16],
+               top.sram.RAM[(128/4)+0][15:8],  top.sram.RAM[(128/4)+0][7:0],
+               top.sram.RAM[(128/4)+1][31:24], top.sram.RAM[(128/4)+1][23:16],
+               top.sram.RAM[(128/4)+1][15:8],  top.sram.RAM[(128/4)+1][7:0]);
+      $display("%d %d %d %d %d %d %d %d",
+               top.sram.RAM[(192/4)+0][31:24], top.sram.RAM[(192/4)+0][23:16],
+               top.sram.RAM[(192/4)+0][15:8],  top.sram.RAM[(192/4)+0][7:0],
+               top.sram.RAM[(192/4)+1][31:24], top.sram.RAM[(192/4)+1][23:16],
+               top.sram.RAM[(192/4)+1][15:8],  top.sram.RAM[(192/4)+1][7:0]);
+      $display("eop is asserted");
       $finish;
     end
   end

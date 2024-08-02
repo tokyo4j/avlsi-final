@@ -74,7 +74,7 @@ module mips (
   wire beq_in_ma, j_in_id, lb_in_ex, if_nop, if_stall, id_nop, ex_nop;
   reg id_if_nop;
   reg [7:0] pc;
-  // ID stage
+  // ID (instruction decode) stage
   wire [2:0] op;
   wire [4:0] rd, rt, rs;
   wire [5:0] funct;
@@ -88,23 +88,23 @@ module mips (
   wire [7:0] regs_r_1, regs_r_2, regs_w;
   wire [2:0] regs_r_id_1;
   wire [2:0] regs_r_id_2;
-  // EX stage
+  // EX (execute) stage
   reg [7:0] ex_regs_r_1, ex_regs_r_2, ex_pc, ex_imm;
   reg [2:0] ex_r_id_1, ex_r_id_2, ex_w_id;
   reg [2:0] ex_alu_op, ex_op;
   wire [7:0] ex_regs_r_1_fw, ex_regs_r_2_fw;
   wire [7:0] alu_in_1, alu_in_2, alu_out;
-  // MA stage
+  // MA (memory access) stage
   reg [7:0] ma_alu_out, ma_pc, ma_imm, ma_regs_r_2;
   reg [2:0] ma_op;
   reg [2:0] ma_w_id;
-  // WB stage
+  // WB (write back) stage
   reg [7:0] wb_alu_out;
   reg [2:0] wb_op;
   reg [2:0] wb_w_id;
-  // EP stage
-  reg [2:0] ep_w_id;
-  reg [7:0] ep_w;
+  // RT (retire) stage
+  reg [2:0] rt_w_id;
+  reg [7:0] rt_w;
 
   // BEQ that updates PC in MA
   assign beq_in_ma = (ma_op == `OP_BEQ && ma_alu_out == 0);
@@ -226,9 +226,9 @@ module mips (
                           (wb_w_id && (ex_r_id_1 == wb_w_id)) ?
                             /* forward WB->EX for CAL/LB instruction */
                             regs_w :
-                          (ep_w_id && (ex_r_id_1 == ep_w_id)) ?
+                          (rt_w_id && (ex_r_id_1 == rt_w_id)) ?
                             /* forward EP->EX for CAL/LB instruction */
-                            ep_w :
+                            rt_w :
                           /* else */
                             ex_regs_r_1;
   assign ex_regs_r_2_fw = (ma_w_id && (ex_r_id_2 == ma_w_id)) ?
@@ -237,9 +237,9 @@ module mips (
                           (wb_w_id && (ex_r_id_2 == wb_w_id)) ?
                             /* forward WB->EX for CAL/LB instruction */
                             regs_w :
-                          (ep_w_id && (ex_r_id_2 == ep_w_id)) ?
+                          (rt_w_id && (ex_r_id_2 == rt_w_id)) ?
                             /* forward EP->EX for CAL/LB instruction */
-                            ep_w :
+                            rt_w :
                           /* else */
                             ex_regs_r_2;
 
@@ -285,7 +285,7 @@ module mips (
     end
   end
 
-  // WB (write back) stage
+  // WB stage
   assign regs_w = (wb_op == `OP_CAL || wb_op == `OP_ADDI) ?
                     wb_alu_out :
                   (wb_op == `OP_LB) ?
@@ -293,15 +293,15 @@ module mips (
   assign regs_w_en = (wb_w_id != 0);
   assign regs_w_id = wb_w_id;
 
-  // WB->EP
+  // WB->RT
   always @(posedge clk) begin
     // This is required to forward the result from WB to EX stage
     if (rst || wb_op == `OP_NOP) begin
-      ep_w_id <= 0;
-      ep_w <= 0;
+      rt_w_id <= 0;
+      rt_w <= 0;
     end else begin
-      ep_w_id <= wb_w_id;
-      ep_w <= regs_w;
+      rt_w_id <= wb_w_id;
+      rt_w <= regs_w;
     end
   end
 endmodule

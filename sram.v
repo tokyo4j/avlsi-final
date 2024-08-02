@@ -1,5 +1,4 @@
-/* external memory accessed by MIPS */
-module exmemory (
+module sram (
     input [7:0] i_addr,
     output reg [31:0] ins,
 
