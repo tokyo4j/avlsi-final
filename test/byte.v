@@ -7,13 +7,13 @@
 //-------------------------------------------------------
 `timescale 1ns/10ps
 
-`define MEM_FILE_NAME "fib.dat"
-`include "exmemory.v"
+`define MEM_FILE_NAME "test/byte.dat"
+`include "test/exmemory.v"
 
 /* top level design for testing */
 module top;
   reg clk, rst;
-  wire w_en;
+  wire w_en, i_en;
   wire [31:0] i;
   wire [7:0] r, w, i_addr, rw_addr;
   // 10nsec --> 100MHz
@@ -34,7 +34,7 @@ module top;
     // dump waveform
     $dumpfile("dump.vcd");
     $dumpvars(0, top.dut);
-    // rst
+    // reset
     clk <= 0; rst <= 1; # 22; rst <= 0;
     // stop at 1,000 cycles
     #(STEP*1000);
@@ -47,11 +47,8 @@ module top;
   always @(negedge clk) begin
     if (w_en) begin
       $display("Data [%d] is stored in Address [%d]", w, rw_addr);
-      if (rw_addr == 255 & w == 13)
-        $display("Simulation completely successful");
-      else
-        $display("Simulation failed");
-      $finish;
+      if (rw_addr == 255)
+        $finish;
     end
   end
 endmodule

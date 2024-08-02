@@ -7,8 +7,8 @@
 //-------------------------------------------------------
 `timescale 1ns/10ps
 
-`define MEM_FILE_NAME "test.dat"
-`include "exmemory.v"
+`define MEM_FILE_NAME "test/test.dat"
+`include "test/exmemory.v"
 
 /* top level design for testing */
 module top;
