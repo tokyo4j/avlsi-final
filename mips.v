@@ -66,7 +66,7 @@ module mips (
     output [7:0] mem_rw_addr,
     input [7:0] mem_r,
     output [7:0] mem_w,
-    output mem_w_en,
+    output mem_w_en, breq,
 
     input clk, rst
 );
@@ -268,8 +268,9 @@ module mips (
   end
 
   // MA (memory access) stage
+  assign breq = ma_op == `OP_SB || ma_op == `OP_LB;
   assign mem_w_en = (ma_op == `OP_SB);
-  assign mem_rw_addr = (ma_op == `OP_SB || ma_op == `OP_LB) ? ma_alu_out : 0;
+  assign mem_rw_addr = breq ? ma_alu_out : 0;
   assign mem_w = ma_regs_r_2;
 
   // MA->WB

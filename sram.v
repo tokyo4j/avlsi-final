@@ -12,11 +12,13 @@ module sram (
   reg [31:0] RAM [(1<<6)-1:0];
   wire [31:0] word;
   integer i;
+`ifdef MEM_FILE_NAME
   initial begin
     for (i = 0; i < (1<<6); i = i + 1)
       RAM[i] = 0;
     $readmemh(`MEM_FILE_NAME, RAM);
   end
+`endif
   // read and write bytes from 32-bit word
   assign word = RAM[rw_addr>>2];
   always @(posedge clk) begin

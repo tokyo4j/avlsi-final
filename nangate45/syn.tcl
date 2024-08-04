@@ -1,8 +1,14 @@
 #
 # Your design
 #
-set base_name "mips32"
-set rtl_file  "mips32.v"
+set base_name "top"
+set rtl_files {
+  "mips.v"
+  "busarb.v"
+  "dmac.v"
+  "sram.v"
+  "top.v"
+}
 set clock_name "clk"
 set clock_period 10.0
 
@@ -18,8 +24,11 @@ define_design_lib WORK -path ./WORK
 #
 # Read RTL file(s)
 #
-analyze -format verilog $rtl_file
-elaborate $base_name
+foreach file_name $rtl_files {
+  read_verilog $file_name
+	analyze -format verilog $file_name -work WORK
+}
+elaborate $base_name -work WORK
 current_design $base_name
 link
 uniquify
@@ -29,7 +38,7 @@ uniquify
 #
 create_clock -name $clock_name -period $clock_period [find port $clock_name]
 set_clock_uncertainty 0.02 [get_clocks $clock_name]
-set_input_delay 0.1 -clock clk [remove_from_collection [all_inputs] {clk reset}]
+set_input_delay 0.1 -clock clk [remove_from_collection [all_inputs] {clk rst}]
 set_output_delay 0.1 -clock clk [all_outputs]
 
 #

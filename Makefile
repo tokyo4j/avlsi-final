@@ -29,11 +29,11 @@ SCRIPT = nangate45
 #SCRIPT = tsmc16
 
 ex1:
-	ncverilog +access+r test32.v mips32.v
+	ncverilog +access+r test.v mips32.v
 ex2:
-	ncverilog +access+r sum32.v mips32.v
+	ncverilog +access+r fib.v mips32.v
 ex3:
-	ncverilog +access+r fib32.v mips32.v
+	ncverilog +access+r dma.v mips32.v
 syn:
 	dc_shell -f ${SCRIPT}/syn.tcl | tee syn.log
 par:
@@ -41,12 +41,12 @@ par:
 sta:
 	dc_shell -f ${SCRIPT}/sta.tcl | tee sta.log
 dsim:
-	ncverilog +define+__POST_PR__ +access+r -v ${MODEL} sum32.v mips32.final.vnet | tee dsim.log
+	ncverilog +define+__POST_PR__ +access+r -v ${MODEL} test/dma.v mips.final.vnet | tee dsim.log
 saif:
-	vcd2saif -input dump.vcd -output mips32.saif
+	vcd2saif -input dump.vcd -output mips.saif
 power:
-	vcd2saif -input dump.vcd -output mips32.saif
+	vcd2saif -input dump.vcd -output mips.saif
 	dc_shell -f ${SCRIPT}/power.tcl | tee power.log
 
 clean:
-	rm -f a.out dump.vcd *.dat gate.v
+	rm -rf a.out dump.vcd *.dat gate.v

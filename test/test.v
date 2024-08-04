@@ -20,7 +20,7 @@ module test;
 `endif
     // dump waveform
     $dumpfile("dump.vcd");
-    $dumpvars(0, top.top);
+    $dumpvars(0, test.top);
     // reset
     clk <= 0; rst <= 1; #(STEP*10); rst <= 0;
     // stop at 1,000 cycles

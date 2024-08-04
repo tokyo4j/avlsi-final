@@ -1,4 +1,4 @@
-set base_name "mips32"
+set base_name "top"
 set lib_path "/home/cad/lib/NANGATE45/"
 
 # Step 1: Setup (File --> Import Design)

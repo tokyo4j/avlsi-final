@@ -35,15 +35,15 @@ module test;
     prev_addr <= top.addr_by_cpu;
     if (prev_addr == 255 && top.r_by_cpu == 1) begin
       $display("%d %d %d %d %d %d %d %d",
-               top.sram.RAM[(128/4)+0][31:24], top.sram.RAM[(128/4)+0][23:16],
-               top.sram.RAM[(128/4)+0][15:8],  top.sram.RAM[(128/4)+0][7:0],
-               top.sram.RAM[(128/4)+1][31:24], top.sram.RAM[(128/4)+1][23:16],
-               top.sram.RAM[(128/4)+1][15:8],  top.sram.RAM[(128/4)+1][7:0]);
+               top.sram0.RAM[(128/4)+0][31:24], top.sram0.RAM[(128/4)+0][23:16],
+               top.sram0.RAM[(128/4)+0][15:8],  top.sram0.RAM[(128/4)+0][7:0],
+               top.sram0.RAM[(128/4)+1][31:24], top.sram0.RAM[(128/4)+1][23:16],
+               top.sram0.RAM[(128/4)+1][15:8],  top.sram0.RAM[(128/4)+1][7:0]);
       $display("%d %d %d %d %d %d %d %d",
-               top.sram.RAM[(192/4)+0][31:24], top.sram.RAM[(192/4)+0][23:16],
-               top.sram.RAM[(192/4)+0][15:8],  top.sram.RAM[(192/4)+0][7:0],
-               top.sram.RAM[(192/4)+1][31:24], top.sram.RAM[(192/4)+1][23:16],
-               top.sram.RAM[(192/4)+1][15:8],  top.sram.RAM[(192/4)+1][7:0]);
+               top.sram0.RAM[(192/4)+0][31:24], top.sram0.RAM[(192/4)+0][23:16],
+               top.sram0.RAM[(192/4)+0][15:8],  top.sram0.RAM[(192/4)+0][7:0],
+               top.sram0.RAM[(192/4)+1][31:24], top.sram0.RAM[(192/4)+1][23:16],
+               top.sram0.RAM[(192/4)+1][15:8],  top.sram0.RAM[(192/4)+1][7:0]);
       $display("eop is asserted");
       $finish;
     end
