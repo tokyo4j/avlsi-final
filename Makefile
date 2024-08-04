@@ -23,5 +23,30 @@ sim:
 test/%.dat: test/%.asm
 	test/asm.pl $<
 
+MODEL = /home/cad/lib/NANGATE45/cells.v
+SCRIPT = nangate45
+#MODEL = /home/cad/lib/TSMC16/cells.v
+#SCRIPT = tsmc16
+
+ex1:
+	ncverilog +access+r test32.v mips32.v
+ex2:
+	ncverilog +access+r sum32.v mips32.v
+ex3:
+	ncverilog +access+r fib32.v mips32.v
+syn:
+	dc_shell -f ${SCRIPT}/syn.tcl | tee syn.log
+par:
+	innovus -init ${SCRIPT}/par.tcl | tee par.log
+sta:
+	dc_shell -f ${SCRIPT}/sta.tcl | tee sta.log
+dsim:
+	ncverilog +define+__POST_PR__ +access+r -v ${MODEL} sum32.v mips32.final.vnet | tee dsim.log
+saif:
+	vcd2saif -input dump.vcd -output mips32.saif
+power:
+	vcd2saif -input dump.vcd -output mips32.saif
+	dc_shell -f ${SCRIPT}/power.tcl | tee power.log
+
 clean:
-	rm -f a.out dump.vcd *.dat
+	rm -f a.out dump.vcd *.dat gate.v
