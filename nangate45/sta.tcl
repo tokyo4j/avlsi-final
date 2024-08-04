@@ -1,11 +1,11 @@
 #
 # Your design
 #
-set base_name "top"
-set vnet_file "top.final.vnet"
-set sdc_file  "top.sdc"
-set sdf_file  "top.sdf"
-set spef_file "top.spef"
+set base_name "mips"
+set vnet_file "mips.final.vnet"
+set sdc_file  "mips.sdc"
+set sdf_file  "mips.sdf"
+set spef_file "mips.spef"
 
 #
 # Libraries

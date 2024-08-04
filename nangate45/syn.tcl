@@ -1,14 +1,8 @@
 #
 # Your design
 #
-set base_name "top"
-set rtl_files {
-  "mips.v"
-  "busarb.v"
-  "dmac.v"
-  "sram.v"
-  "top.v"
-}
+set base_name "mips"
+set rtl_file  "mips.v"
 set clock_name "clk"
 set clock_period 10.0
 
@@ -24,11 +18,8 @@ define_design_lib WORK -path ./WORK
 #
 # Read RTL file(s)
 #
-foreach file_name $rtl_files {
-  read_verilog $file_name
-	analyze -format verilog $file_name -work WORK
-}
-elaborate $base_name -work WORK
+analyze -format verilog $rtl_file
+elaborate $base_name
 current_design $base_name
 link
 uniquify
