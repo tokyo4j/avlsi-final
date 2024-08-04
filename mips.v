@@ -125,9 +125,9 @@ module mips (
     if (rst)
       pc <= 0;
     else if (beq_in_ma)
-      pc <= ma_pc + {ma_imm, 2'b00} + 4;
+      pc <= ma_pc + {ma_imm[5:0], 2'b00} + 4;
     else if (j_in_id)
-      pc <= {imm, 2'b00};
+      pc <= {imm[5:0], 2'b00};
     else if (lb_in_ex)
       /* stall */;
     else
