@@ -1,11 +1,11 @@
 #
 # Your design
 #
-set base_name "mips32"
-set vnet_file "mips32.final.vnet"
-set sdc_file  "mips32.sdc"
-set sdf_file  "mips32.sdf"
-set spef_file "mips32.spef"
+set base_name "mips"
+set vnet_file "mips.final.vnet"
+set sdc_file  "mips.sdc"
+set sdf_file  "mips.sdf"
+set spef_file "mips.spef"
 
 #
 # Libraries

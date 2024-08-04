@@ -1,4 +1,4 @@
-set base_name "mips32"
+set base_name "mips"
 set lib_path "/home/cad/lib/TSMC16/"
 source ./tsmc16/var.tcl
 

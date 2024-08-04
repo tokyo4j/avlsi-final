@@ -1,13 +1,13 @@
 #
 # Your design
 #
-set base_name "mips32"
-set vnet_file "mips32.final.vnet"
-set sdc_file  "mips32.sdc"
-set sdf_file  "mips32.sdf"
-set spef_file "mips32.spef"
-set saif_file "mips32.saif"
-set inst_name "top/dut"
+set base_name "mips"
+set vnet_file "mips.final.vnet"
+set sdc_file  "mips.sdc"
+set sdf_file  "mips.sdf"
+set spef_file "mips.spef"
+set saif_file "mips.saif"
+set inst_name "test/mips0"
 
 #
 # Libraries
