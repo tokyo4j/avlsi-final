@@ -11,6 +11,9 @@
 a.out
 *.rpt
 *.old
+*.dsn
+*.trn
+*.X
 innovus.*
 xmverilog.*
 crte_*.txt
@@ -19,3 +22,4 @@ timingReports
 xcelium.d
 Default.view
 WORK
+.simvision

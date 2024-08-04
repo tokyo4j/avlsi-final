@@ -1,5 +1,3 @@
-`timescale 1ns/10ps
-
 `define RAW_OP_CAL  6'b000000
 `define RAW_OP_ADDI 6'b001000
 `define RAW_OP_BEQ  6'b000100
