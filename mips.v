@@ -50,7 +50,7 @@ module regs(
     input w_en,
     input [7:0] w,
     output [7:0] r_1, r_2,
-    input clk, rst
+    input clk
 );
   reg [7:0] regfile[7:0];
   always @(posedge clk)
@@ -192,7 +192,7 @@ module mips (
   regs regs(regs_r_id_1, regs_r_id_2,
             regs_w_id, regs_w_en, regs_w,
             regs_r_1, regs_r_2,
-            clk, rst);
+            clk);
 
   // ID->EX
   always @(posedge clk) begin
