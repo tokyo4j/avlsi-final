@@ -10,6 +10,10 @@ fib: mips.v test/fib.v test/fib.dat
 	iverilog test/fib.v mips.v
 	vvp a.out
 
+fib_old: mips_old.v test/fib_old.v
+	iverilog test/fib_old.v mips_old.v
+	vvp a.out
+
 byte: mips.v test/byte.v test/byte.dat
 	iverilog test/byte.v mips.v
 	vvp a.out
