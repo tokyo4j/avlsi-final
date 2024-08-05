@@ -4,7 +4,7 @@
 set base_name "mips"
 set vnet_file "mips.final.vnet"
 set sdc_file  "mips.sdc"
-set sdf_file  "mips.sdf"k
+set sdf_file  "mips.sdf"
 set spef_file "mips.spef"
 set saif_file "mips.saif"
 set inst_name "test/mips"
